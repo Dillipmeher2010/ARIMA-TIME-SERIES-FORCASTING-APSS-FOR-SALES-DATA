@@ -1,12 +1,8 @@
 import streamlit as st
 import pandas as pd
-from pmdarima import auto_arima
 import matplotlib.pyplot as plt
+from statsmodels.tsa.arima.model import ARIMA
 import os
-import warnings
-
-# Suppress warnings
-warnings.filterwarnings("ignore")
 
 # Create a sample DataFrame for the Excel file
 sample_data = {
@@ -21,7 +17,7 @@ sample_file_path = 'sample_sales_data.xlsx'
 sample_df.to_excel(sample_file_path, index=False)
 
 # Streamlit app layout
-st.title("Sales Forecasting App with Auto ARIMA")
+st.title("Sales Forecasting App with ARIMA")
 st.write("Upload your sales data in the format of the sample file below:")
 
 # Display download link for the sample file
@@ -57,32 +53,30 @@ if uploaded_file is not None:
         if len(df) < 2:
             st.error("The DataFrame must contain at least 2 valid rows for fitting the model.")
         else:
-            # Fit the Auto ARIMA model
-            st.subheader("Training Auto ARIMA Model")
+            # Fit the ARIMA model
+            st.subheader("Training ARIMA Model")
+            order = (1, 1, 1)  # Example order (p, d, q); you can adjust this
             with st.spinner("Training..."):
-                model = auto_arima(df['Sales Amt'], seasonal=False, stepwise=True)
+                model = ARIMA(df['Sales Amt'], order=order)
+                model_fit = model.fit()
                 st.success("Model training complete!")
 
             # Create a future DataFrame for forecasting
             n_periods = st.slider("Select the number of periods to forecast:", min_value=1, max_value=12, value=3)
-            future_index = pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=n_periods, freq='M')
-            forecast, conf_int = model.predict(n_periods=n_periods, return_conf_int=True)
-
-            # Create a DataFrame for the forecast results
-            forecast_df = pd.DataFrame(forecast, index=future_index, columns=['Forecast'])
-            conf_int_df = pd.DataFrame(conf_int, index=future_index, columns=['Lower Bound', 'Upper Bound'])
+            forecast = model_fit.forecast(steps=n_periods)
+            forecast_index = pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=n_periods, freq='M')
+            forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=['Forecast'])
 
             # Display the results
             st.write("Forecasting Results:")
-            st.write(forecast_df.join(conf_int_df))
+            st.write(forecast_df)
 
             # Plot the results
             st.subheader("Forecast Plot")
             plt.figure(figsize=(10, 6))
             plt.plot(df.index, df['Sales Amt'], label='Historical Sales', color='blue')
             plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='green')
-            plt.fill_between(conf_int_df.index, conf_int_df['Lower Bound'], conf_int_df['Upper Bound'], color='gray', alpha=0.5)
-            plt.title("Sales Forecast with Auto ARIMA")
+            plt.title("Sales Forecast with ARIMA")
             plt.xlabel("Month")
             plt.ylabel("Sales Amount")
             plt.legend()
@@ -90,7 +84,7 @@ if uploaded_file is not None:
 
             # Save the forecasting results to a new Excel file for download
             forecast_file = "forecasted_sales_data.xlsx"
-            forecast_df.join(conf_int_df).to_excel(forecast_file)
+            forecast_df.to_excel(forecast_file)
 
             # Create a download button for the forecasting results
             with open(forecast_file, "rb") as f:
