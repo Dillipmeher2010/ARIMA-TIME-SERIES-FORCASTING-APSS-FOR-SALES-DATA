@@ -1,69 +1,69 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-from pmdarima import auto_arima
 import matplotlib.pyplot as plt
-import base64
+from pmdarima import auto_arima
+import warnings
+warnings.filterwarnings("ignore")
 
-# Function to generate a download link for the forecasted data
-def download_link(data, filename):
-    csv = data.to_csv(index=False)
-    b64 = base64.b64encode(csv.encode()).decode()  # Convert to base64
-    href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">Download Forecasted Data</a>'
-    return href
-
-# Streamlit app title
+# Set title of the app
 st.title("Time Series Forecasting with Auto ARIMA")
 
-# Upload CSV file
+# File uploader
 uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
-if uploaded_file:
-    # Read the CSV file
-    df = pd.read_csv(uploaded_file)
 
-    # Display the DataFrame
-    st.write("Data Preview:")
-    st.dataframe(df)
+if uploaded_file is not None:
+    # Read the data
+    data = pd.read_csv(uploaded_file)
+    
+    # Display the uploaded data
+    st.write("Uploaded Data:", data)
 
-    # Assuming the CSV has a column named 'Sales Amt' for the forecasting
-    if 'Sales Amt' in df.columns:
-        # Prepare data for modeling
-        df['Date'] = pd.date_range(start='2020-01-01', periods=len(df), freq='M')  # Adjust date if necessary
-        df.set_index('Date', inplace=True)
-        y = df['Sales Amt']
+    # Ensure 'Month' and 'Sales Amt' columns are present
+    if 'Month' in data.columns and 'Sales Amt' in data.columns:
+        # Parse dates
+        data['Month'] = pd.to_datetime(data['Month'], format='%b-%y')
+        data.set_index('Month', inplace=True)
 
-        # Fit Auto ARIMA model
-        with st.spinner("Fitting Auto ARIMA model..."):
-            model = auto_arima(y, seasonal=False, stepwise=True, suppress_warnings=True)
+        # Plotting the time series
+        st.subheader("Time Series Data")
+        st.line_chart(data['Sales Amt'])
+
+        # Train Auto ARIMA model
+        st.subheader("Training Auto ARIMA Model")
+        with st.spinner("Training..."):
+            model = auto_arima(data['Sales Amt'], seasonal=False, stepwise=True, trace=True)
+
+        st.success("Model training complete!")
+
+        # Display model summary
+        st.subheader("Model Summary")
+        st.text(model.summary())
 
         # Forecasting
-        n_periods = st.number_input("Number of periods to forecast", min_value=1, max_value=24, value=12)
+        n_periods = st.slider("Select the number of periods to forecast:", min_value=1, max_value=12, value=3)
         forecast, conf_int = model.predict(n_periods=n_periods, return_conf_int=True)
 
         # Create a DataFrame for the forecast
-        forecast_index = pd.date_range(start=y.index[-1] + pd.DateOffset(months=1), periods=n_periods, freq='M')
-        forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=["Forecast"])
-        forecast_df['Lower CI'] = conf_int[:, 0]
-        forecast_df['Upper CI'] = conf_int[:, 1]
+        forecast_index = pd.date_range(start=data.index[-1] + pd.DateOffset(months=1), periods=n_periods, freq='M')
+        forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=['Forecast'])
+        conf_int_df = pd.DataFrame(conf_int, index=forecast_index, columns=['Lower Bound', 'Upper Bound'])
 
-        # Display forecast results
-        st.write("Forecast Results:")
-        st.dataframe(forecast_df)
+        # Display forecast data
+        st.subheader("Forecast Results")
+        st.write(forecast_df.join(conf_int_df))
 
-        # Plotting the results
-        plt.figure(figsize=(10, 5))
-        plt.plot(y, label='Historical Data', color='blue')
-        plt.plot(forecast_df['Forecast'], label='Forecast', color='orange')
-        plt.fill_between(forecast_df.index, forecast_df['Lower CI'], forecast_df['Upper CI'], color='lightgray', alpha=0.5)
-        plt.title('Sales Forecast')
-        plt.xlabel('Date')
-        plt.ylabel('Sales Amount')
+        # Plotting forecast
+        st.subheader("Forecast Plot")
+        plt.figure(figsize=(12, 6))
+        plt.plot(data.index, data['Sales Amt'], label='Historical Sales', color='blue')
+        plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='green')
+        plt.fill_between(conf_int_df.index, conf_int_df['Lower Bound'], conf_int_df['Upper Bound'], color='gray', alpha=0.5)
+        plt.title("Sales Forecast with Auto ARIMA")
+        plt.xlabel("Month")
+        plt.ylabel("Sales Amount")
         plt.legend()
-        plt.grid()
-        st.pyplot(plt)
-
-        # Provide download link for forecasted data
-        st.markdown(download_link(forecast_df, "forecasted_sales.csv"), unsafe_allow_html=True)
-
+        st.pyplot(plt.gcf())
     else:
-        st.error("The uploaded file must contain a 'Sales Amt' column for forecasting.")
+        st.error("Ensure your CSV has 'Month' and 'Sales Amt' columns.")
+else:
+    st.info("Upload a CSV file to start.")
