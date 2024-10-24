@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from statsmodels.tsa.arima.model import ARIMA
 import os
 
-# Create a sample DataFrame for the Excel file
+# Sample DataFrame creation
 sample_data = {
     'Month': ['Jan-24', 'Feb-24', 'Mar-24', 'Apr-24', 'May-24', 
               'Jun-24', 'Jul-24', 'Aug-24'],
@@ -66,6 +66,9 @@ if uploaded_file is not None:
             forecast = model_fit.forecast(steps=n_periods)
             forecast_index = pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=n_periods, freq='M')
             forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=['Forecast'])
+
+            # Check the forecast DataFrame
+            st.write("Forecast DataFrame:", forecast_df)
 
             # Display the results
             st.write("Forecasting Results:")
