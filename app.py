@@ -21,7 +21,7 @@ if uploaded_file is not None:
     if 'Month' in df.columns and 'Sales Amt' in df.columns:
         # Prepare the data
         df['Month'] = pd.to_datetime(df['Month'], format='%b-%y', errors='coerce')
-        df.dropna(subset=['Month', 'Sales Amt'], inplace=True)
+        df.dropna(subset=['Month', 'Sales Amt'], inplace=True)  # Drop rows with NaT values
         df.set_index('Month', inplace=True)
 
         # Debugging output
@@ -33,7 +33,7 @@ if uploaded_file is not None:
         else:
             # Fit the ARIMA model
             st.subheader("Training ARIMA Model")
-            order = (1, 1, 1)  # Example order; adjust as necessary
+            order = (1, 1, 1)  # Example order; you can adjust this based on your data
             with st.spinner("Training..."):
                 try:
                     model = ARIMA(df['Sales Amt'], order=order)
