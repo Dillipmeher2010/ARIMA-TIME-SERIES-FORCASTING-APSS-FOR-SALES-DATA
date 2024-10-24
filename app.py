@@ -2,13 +2,12 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from statsmodels.tsa.arima.model import ARIMA
-import os
 
 # Create a sample DataFrame for the Excel file
 sample_data = {
     'Month': ['Jan-24', 'Feb-24', 'Mar-24', 'Apr-24', 'May-24', 
-              'Jun-24', 'Jul-24', 'Aug-24'],
-    'Sales Amt': [5319, 9990, 7597, 8485, 5243, 5367, 3168, 5202]
+              'Jun-24', 'Jul-24', 'Aug-24', 'Sep-24'],
+    'Sales Amt': [9356, 4891, 5824, 8116, 2864, 2326, 2240, 6717, 2864]
 }
 sample_df = pd.DataFrame(sample_data)
 
@@ -62,8 +61,7 @@ if uploaded_file is not None:
                     model_fit = model.fit()
                     st.success("Model training complete!")
                 except Exception as e:
-                    st.error(f"Error fitting model: {e}")
-                    st.stop()
+                    st.error(f"An error occurred while fitting the model: {e}")
 
             # Create a future DataFrame for forecasting
             n_periods = st.slider("Select the number of periods to forecast:", min_value=1, max_value=12, value=3)
