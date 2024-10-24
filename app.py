@@ -40,27 +40,29 @@ if uploaded_file is not None:
                 st.success("Model training complete!")
             except Exception as e:
                 st.error(f"Model fitting failed: {e}")
-                return
 
             # Create a future DataFrame for forecasting
             n_periods = st.slider("Select the number of periods to forecast:", min_value=1, max_value=12, value=3)
-            forecast = model_fit.forecast(steps=n_periods)
-            st.write("Forecast Output:", forecast)
+            if 'model_fit' in locals():  # Check if model fitting was successful
+                forecast = model_fit.forecast(steps=n_periods)
+                st.write("Forecast Output:", forecast)
 
-            forecast_index = pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=n_periods, freq='M')
-            forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=['Forecast'])
+                forecast_index = pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=n_periods, freq='M')
+                forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=['Forecast'])
 
-            # Display the results
-            st.write("Forecasting Results:")
-            st.write(forecast_df)
+                # Display the results
+                st.write("Forecasting Results:")
+                st.write(forecast_df)
 
-            # Plot the results
-            st.subheader("Forecast Plot")
-            plt.figure(figsize=(10, 6))
-            plt.plot(df.index, df['Sales Amt'], label='Historical Sales', color='blue')
-            plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='green')
-            plt.title("Sales Forecast with ARIMA")
-            plt.xlabel("Month")
-            plt.ylabel("Sales Amount")
-            plt.legend()
-            st.pyplot(plt.gcf())
+                # Plot the results
+                st.subheader("Forecast Plot")
+                plt.figure(figsize=(10, 6))
+                plt.plot(df.index, df['Sales Amt'], label='Historical Sales', color='blue')
+                plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='green')
+                plt.title("Sales Forecast with ARIMA")
+                plt.xlabel("Month")
+                plt.ylabel("Sales Amount")
+                plt.legend()
+                st.pyplot(plt.gcf())
+    else:
+        st.error("Uploaded file must contain 'Month' and 'Sales Amt' columns.")
