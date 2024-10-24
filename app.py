@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from statsmodels.tsa.arima.model import ARIMA
+from pmdarima import auto_arima
 
 # Streamlit app layout
-st.title("Sales Forecasting App with ARIMA")
+st.title("Sales Forecasting App with Auto ARIMA")
 st.write("Upload your sales data in the format of the sample file below:")
 
 # File upload section
@@ -31,12 +31,10 @@ if uploaded_file is not None:
         if len(df) < 2:
             st.error("The DataFrame must contain at least 2 valid rows for fitting the model.")
         else:
-            # Fit the ARIMA model
-            st.subheader("Training ARIMA Model")
-            order = (1, 1, 1)  # Example order (p, d, q)
+            # Fit the Auto ARIMA model
+            st.subheader("Training Auto ARIMA Model")
             try:
-                model = ARIMA(df['Sales Amt'], order=order)
-                model_fit = model.fit()
+                model = auto_arima(df['Sales Amt'], seasonal=False, trace=True, error_action='ignore', suppress_warnings=True)
                 st.success("Model training complete!")
             except Exception as e:
                 st.error(f"Model fitting failed: {e}")
@@ -46,7 +44,7 @@ if uploaded_file is not None:
             n_periods = st.slider("Select the number of periods to forecast:", min_value=1, max_value=12, value=3)
             try:
                 # Forecast the future sales
-                forecast = model_fit.forecast(steps=n_periods)
+                forecast, conf_int = model.predict(n_periods=n_periods, return_conf_int=True)
                 forecast_index = pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=n_periods, freq='M')
                 forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=['Forecast'])
 
@@ -59,7 +57,8 @@ if uploaded_file is not None:
                 plt.figure(figsize=(10, 6))
                 plt.plot(df.index, df['Sales Amt'], label='Historical Sales', color='blue', marker='o')
                 plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='green', marker='o', linestyle='--')
-                plt.title("Sales Forecast with ARIMA")
+                plt.fill_between(forecast_df.index, conf_int[:, 0], conf_int[:, 1], color='lightgreen', alpha=0.3)
+                plt.title("Sales Forecast with Auto ARIMA")
                 plt.xlabel("Month")
                 plt.ylabel("Sales Amount")
                 plt.xticks(rotation=45)
