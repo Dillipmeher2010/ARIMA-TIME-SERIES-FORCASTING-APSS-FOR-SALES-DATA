@@ -2,4 +2,5 @@ streamlit
 pandas
 numpy
 pmdarima
-cython
+Cython
+python==3.10
