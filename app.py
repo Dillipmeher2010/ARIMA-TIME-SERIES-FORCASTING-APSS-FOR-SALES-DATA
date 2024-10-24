@@ -35,10 +35,10 @@ if uploaded_file is not None:
             st.subheader("Training Auto ARIMA Model")
             try:
                 model = auto_arima(df['Sales Amt'], seasonal=False, trace=True, error_action='ignore', suppress_warnings=True)
-                st.success("Model training complete!")
-            except Exception as e:
-                st.error(f"Model fitting failed: {e}")
-                st.stop()  # Stop further execution if fitting fails
+    st.success("Model training complete!")
+except Exception as e:
+    st.error(f"Model fitting failed: {e}")
+    print(f"Error details: {e}")
 
             # Create a future DataFrame for forecasting
             n_periods = st.slider("Select the number of periods to forecast:", min_value=1, max_value=12, value=3)
