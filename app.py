@@ -70,6 +70,19 @@ if uploaded_file is not None:
                 plt.xticks(rotation=45)  # Rotate x-axis labels for better visibility
                 st.pyplot(plt)
 
+                # Save the forecasting results to a new Excel file for download
+                forecast_file = "forecasted_sales_data.xlsx"
+                forecast_df.to_excel(forecast_file, index=True)
+
+                # Create a download button for the forecasting results
+                with open(forecast_file, "rb") as f:
+                    st.download_button(
+                        label="Download Forecasting Data",
+                        data=f,
+                        file_name=forecast_file,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+
             except Exception as e:
                 st.error(f"Error in forecasting: {e}")
     else:
