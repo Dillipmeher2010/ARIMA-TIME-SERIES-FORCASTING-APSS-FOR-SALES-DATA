@@ -1,77 +1,76 @@
 import streamlit as st
 import pandas as pd
-from pmdarima import auto_arima
 import matplotlib.pyplot as plt
+from pmdarima import auto_arima
+import warnings
+warnings.filterwarnings("ignore")
 
-# Streamlit app title
-st.title("Auto ARIMA Time Series Forecasting App")
+# Title for the Streamlit app
+st.title("Sales Forecasting using Auto ARIMA")
 
-# Upload the CSV file
-uploaded_file = st.file_uploader("Upload a CSV file", type=["csv", "xlsx"])
+# File upload option
+uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
 
-if uploaded_file is not None:
-    # Read the CSV/XLSX file
-    if uploaded_file.name.endswith('.csv'):
-        df = pd.read_csv(uploaded_file)
-    else:
-        df = pd.read_excel(uploaded_file)
-
+if uploaded_file:
+    # Read the data
+    data = pd.read_csv(uploaded_file)
+    
     # Display the uploaded data
-    st.write("Uploaded Data:")
-    st.write(df)
+    st.write("Uploaded Data:", data)
 
-    # Check if data has the required columns
-    if 'Month' in df.columns and 'Sales Amt' in df.columns:
-        # Convert 'Month' to datetime
-        df['Month'] = pd.to_datetime(df['Month'], format='%b-%y')
-        df.set_index('Month', inplace=True)
+    # Ensure the 'Month' and 'Sales Amt' columns exist in the file
+    if 'Month' in data.columns and 'Sales Amt' in data.columns:
+        # Parse the dates and set as index
+        data['Month'] = pd.to_datetime(data['Month'], format='%b-%y')
+        data.set_index('Month', inplace=True)
 
-        # Handle missing values (optional: interpolation)
-        df['Sales Amt'].interpolate(method='linear', inplace=True)
+        # Display time series plot of the sales data
+        st.subheader("Sales Data Over Time")
+        st.line_chart(data['Sales Amt'])
 
-        # Display cleaned data
-        st.write("Cleaned Data:")
-        st.write(df)
+        # Model training with Auto ARIMA
+        st.subheader("Auto ARIMA Model Training")
+        with st.spinner("Training Auto ARIMA model..."):
+            model = auto_arima(data['Sales Amt'], start_p=1, start_q=1,
+                               max_p=5, max_q=5, seasonal=False,
+                               stepwise=True, suppress_warnings=True, trace=True)
 
-        # Model Training using Auto ARIMA
-        st.write("Fitting Auto ARIMA model...")
-        model = auto_arima(df['Sales Amt'], seasonal=True, trace=True, suppress_warnings=True)
+        st.success("Model training complete!")
 
-        # Display ARIMA order
-        st.write(f"Best ARIMA model order: {model.order}, Seasonal order: {model.seasonal_order}")
+        # Display the summary of the model
+        st.subheader("Model Summary")
+        st.text(model.summary())
 
-        # Forecast for the next 2 months (Sep-24, Oct-24)
-        forecast_periods = 2
-        forecast = model.predict(n_periods=forecast_periods)
+        # Forecast the future sales
+        n_periods = st.slider("Select number of periods to forecast", min_value=1, max_value=12, value=2)
+        forecast, conf_int = model.predict(n_periods=n_periods, return_conf_int=True)
 
-        # Creating forecast dates for display
-        last_date = df.index[-1]
-        future_dates = pd.date_range(last_date, periods=forecast_periods + 1, freq='M')[1:]
-
-        # Create a DataFrame for forecast results
+        # Create a forecast DataFrame for better visualization
+        future_dates = pd.date_range(data.index[-1], periods=n_periods+1, freq='M')[1:]
         forecast_df = pd.DataFrame({
-            'Month': future_dates,
-            'Forecasted Sales': forecast
-        })
-        forecast_df.set_index('Month', inplace=True)
+            'Forecast': forecast,
+            'Lower Confidence Interval': conf_int[:, 0],
+            'Upper Confidence Interval': conf_int[:, 1]
+        }, index=future_dates)
 
-        # Display forecast results
-        st.write("Forecast for next months:")
+        st.subheader("Forecasted Sales")
         st.write(forecast_df)
 
-        # Plot the actual and forecasted values
-        st.write("Sales Forecast Plot:")
+        # Plot the forecast along with the historical data
+        st.subheader("Sales Forecast Plot")
         plt.figure(figsize=(10, 6))
-        plt.plot(df.index, df['Sales Amt'], label="Actual Sales")
-        plt.plot(forecast_df.index, forecast_df['Forecasted Sales'], label="Forecasted Sales", linestyle='--')
-        plt.xlabel("Month")
-        plt.ylabel("Sales Amount")
-        plt.title("Sales Forecast using Auto ARIMA")
+        plt.plot(data.index, data['Sales Amt'], label="Historical Sales")
+        plt.plot(forecast_df.index, forecast_df['Forecast'], label="Forecasted Sales", color='green')
+        plt.fill_between(forecast_df.index, forecast_df['Lower Confidence Interval'], forecast_df['Upper Confidence Interval'],
+                         color='gray', alpha=0.2, label='Confidence Interval')
         plt.legend()
-        st.pyplot(plt)
+        plt.title("Sales Forecast using Auto ARIMA")
+        plt.xlabel("Date")
+        plt.ylabel("Sales Amount")
+        st.pyplot(plt.gcf())
 
     else:
-        st.error("The uploaded file does not contain the required columns 'Month' and 'Sales Amt'. Please check the file format.")
-
+        st.error("Please ensure your CSV file has 'Month' and 'Sales Amt' columns.")
 else:
-    st.info("Please upload a CSV or Excel file to get started.")
+    st.info("Please upload a CSV file to start.")
+
