@@ -24,13 +24,16 @@ if uploaded_file is not None:
         df.dropna(subset=['Month', 'Sales Amt'], inplace=True)  # Drop rows with NaT values
         df.set_index('Month', inplace=True)
 
+        # Display the cleaned DataFrame for debugging
+        st.write("Cleaned DataFrame:", df)
+
         # Check if there are enough rows to fit the model
         if len(df) < 2:
             st.error("The DataFrame must contain at least 2 valid rows for fitting the model.")
         else:
             # Fit the ARIMA model
             st.subheader("Training ARIMA Model")
-            order = (1, 1, 1)  # Adjust this based on your data analysis
+            order = (1, 1, 1)  # You might want to experiment with different values
             with st.spinner("Training..."):
                 try:
                     model = ARIMA(df['Sales Amt'], order=order)
