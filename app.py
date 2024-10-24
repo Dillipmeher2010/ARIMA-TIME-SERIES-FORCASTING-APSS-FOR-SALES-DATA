@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from statsmodels.tsa.arima.model import ARIMA
+from pmdarima import auto_arima
+import os
 
 # Create a sample DataFrame for the Excel file
 sample_data = {
-    'Month': ['2024-01', '2024-02', '2024-03', '2024-04', '2024-05', 
-              '2024-06', '2024-07', '2024-08'],
+    'Month': ['2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01', '2024-05-01', 
+              '2024-06-01', '2024-07-01', '2024-08-01'],
     'Sales Amt': [5319, 9990, 7597, 8485, 5243, 5367, 3168, 5202]
 }
 sample_df = pd.DataFrame(sample_data)
@@ -16,7 +17,7 @@ sample_file_path = 'sample_sales_data.xlsx'
 sample_df.to_excel(sample_file_path, index=False)
 
 # Streamlit app layout
-st.title("Sales Forecasting App with ARIMA")
+st.title("Sales Forecasting App with Auto ARIMA")
 st.write("Upload your sales data in the format of the sample file below:")
 
 # Display download link for the sample file
@@ -41,67 +42,63 @@ if uploaded_file is not None:
     # Check for required columns
     if 'Month' in df.columns and 'Sales Amt' in df.columns:
         # Prepare the data
-        df['Month'] = pd.to_datetime(df['Month'], format='%Y-%m', errors='coerce')  # Ensure correct format
+        df['Month'] = pd.to_datetime(df['Month'], format='%Y-%m-%d', errors='coerce')  # Ensure correct format
         df.dropna(subset=['Month', 'Sales Amt'], inplace=True)  # Drop rows with NaT values
+
+        # Set the Month as the index
         df.set_index('Month', inplace=True)
 
         # Display the cleaned DataFrame for debugging
         st.write("Cleaned DataFrame:", df)
 
-        # Check if there are enough rows to fit the model
-        if len(df) < 2:
-            st.error("The DataFrame must contain at least 2 valid rows for fitting the model.")
-        else:
-            # Fit the ARIMA model
-            st.subheader("Training ARIMA Model")
-            order = (1, 1, 1)  # You might want to experiment with different values
-            with st.spinner("Training..."):
-                try:
-                    model = ARIMA(df['Sales Amt'], order=order)
-                    model_fit = model.fit()
-                    st.success("Model training complete!")
-                except Exception as e:
-                    st.error(f"Error in model fitting: {e}")
-                    st.stop()
-
-            # Create a future DataFrame for forecasting
-            n_periods = st.slider("Select the number of periods to forecast:", min_value=1, max_value=12, value=3)
+        # Fit the Auto ARIMA model
+        st.subheader("Training Auto ARIMA Model")
+        with st.spinner("Training..."):
             try:
-                # Forecasting
-                forecast = model_fit.forecast(steps=n_periods)
-                forecast_index = pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=n_periods, freq='M')
-                forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=['Forecast'])
-
-                # Display the results
-                st.write("Forecasting Results:")
-                st.write(forecast_df)
-
-                # Plot the results
-                st.subheader("Forecast Plot")
-                plt.figure(figsize=(10, 6))
-                plt.plot(df.index, df['Sales Amt'], label='Historical Sales', color='blue', marker='o')
-                plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='green', marker='x')
-                plt.title("Sales Forecast with ARIMA")
-                plt.xlabel("Month")
-                plt.ylabel("Sales Amount")
-                plt.legend()
-                plt.xticks(rotation=45)  # Rotate x-axis labels for better visibility
-                st.pyplot(plt)
-
-                # Save the forecasting results to a new Excel file for download
-                forecast_file = "forecasted_sales_data.xlsx"
-                forecast_df.to_excel(forecast_file, index=True)
-
-                # Create a download button for the forecasting results
-                with open(forecast_file, "rb") as f:
-                    st.download_button(
-                        label="Download Forecasting Data",
-                        data=f,
-                        file_name=forecast_file,
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
-
+                model = auto_arima(df['Sales Amt'], seasonal=False, stepwise=True, trace=True)
+                st.success("Model training complete!")
             except Exception as e:
-                st.error(f"Error in forecasting: {e}")
+                st.error(f"Error in model fitting: {e}")
+                st.stop()
+
+        # Forecasting
+        n_periods = st.slider("Select the number of periods to forecast:", min_value=1, max_value=12, value=3)
+        forecast, conf_int = model.predict(n_periods=n_periods, return_conf_int=True)
+
+        # Create a DataFrame for the forecast
+        forecast_index = pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=n_periods, freq='M')
+        forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=['Forecast'])
+        conf_int_df = pd.DataFrame(conf_int, index=forecast_index, columns=['Lower Bound', 'Upper Bound'])
+
+        # Display the forecasting results
+        st.write("Forecasting Results:")
+        st.write(forecast_df)
+
+        # Plot the results
+        st.subheader("Forecast Plot")
+        plt.figure(figsize=(10, 5))
+        plt.plot(df['Sales Amt'], label='Historical Sales', color='blue')
+        plt.plot(forecast_df['Forecast'], label='Forecast', color='orange')
+        plt.fill_between(forecast_index, conf_int_df['Lower Bound'], conf_int_df['Upper Bound'], color='lightgrey', alpha=0.5)
+        plt.title('Sales Forecast with Auto ARIMA')
+        plt.xlabel('Date')
+        plt.ylabel('Sales Amount')
+        plt.legend()
+        st.pyplot(plt)
+
+        # Save the forecasting results to a new Excel file for download
+        forecast_file = "forecasted_sales_data.xlsx"
+        combined_forecast = pd.concat([forecast_df, conf_int_df], axis=1)
+        combined_forecast.to_excel(forecast_file, index=True)
+
+        # Create a download button for the forecasting results
+        with open(forecast_file, "rb") as f:
+            st.download_button(
+                label="Download Forecasting Data",
+                data=f,
+                file_name=forecast_file,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
     else:
         st.error("Uploaded file must contain 'Month' and 'Sales Amt' columns.")
