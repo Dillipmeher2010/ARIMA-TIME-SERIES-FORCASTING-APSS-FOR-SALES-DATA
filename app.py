@@ -60,41 +60,41 @@ if uploaded_file is not None:
                     model = ARIMA(df['Sales Amt'], order=order)
                     model_fit = model.fit()
                     st.success("Model training complete!")
+
+                    # Create a future DataFrame for forecasting
+                    n_periods = st.slider("Select the number of periods to forecast:", min_value=1, max_value=12, value=3)
+                    forecast = model_fit.forecast(steps=n_periods)
+                    forecast_index = pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=n_periods, freq='M')
+                    forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=['Forecast'])
+
+                    # Display the results
+                    st.write("Forecasting Results:")
+                    st.write(forecast_df)
+
+                    # Plot the results
+                    st.subheader("Forecast Plot")
+                    plt.figure(figsize=(10, 6))
+                    plt.plot(df.index, df['Sales Amt'], label='Historical Sales', color='blue')
+                    plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='green')
+                    plt.title("Sales Forecast with ARIMA")
+                    plt.xlabel("Month")
+                    plt.ylabel("Sales Amount")
+                    plt.legend()
+                    st.pyplot(plt.gcf())
+
+                    # Save the forecasting results to a new Excel file for download
+                    forecast_file = "forecasted_sales_data.xlsx"
+                    forecast_df.to_excel(forecast_file)
+
+                    # Create a download button for the forecasting results
+                    with open(forecast_file, "rb") as f:
+                        st.download_button(
+                            label="Download Forecasting Data",
+                            data=f,
+                            file_name=forecast_file,
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
                 except Exception as e:
                     st.error(f"An error occurred while fitting the model: {e}")
-
-            # Create a future DataFrame for forecasting
-            n_periods = st.slider("Select the number of periods to forecast:", min_value=1, max_value=12, value=3)
-            forecast = model_fit.forecast(steps=n_periods)
-            forecast_index = pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=n_periods, freq='M')
-            forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=['Forecast'])
-
-            # Display the results
-            st.write("Forecasting Results:")
-            st.write(forecast_df)
-
-            # Plot the results
-            st.subheader("Forecast Plot")
-            plt.figure(figsize=(10, 6))
-            plt.plot(df.index, df['Sales Amt'], label='Historical Sales', color='blue')
-            plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='green')
-            plt.title("Sales Forecast with ARIMA")
-            plt.xlabel("Month")
-            plt.ylabel("Sales Amount")
-            plt.legend()
-            st.pyplot(plt.gcf())
-
-            # Save the forecasting results to a new Excel file for download
-            forecast_file = "forecasted_sales_data.xlsx"
-            forecast_df.to_excel(forecast_file)
-
-            # Create a download button for the forecasting results
-            with open(forecast_file, "rb") as f:
-                st.download_button(
-                    label="Download Forecasting Data",
-                    data=f,
-                    file_name=forecast_file,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
     else:
         st.error("Uploaded file must contain 'Month' and 'Sales Amt' columns.")
