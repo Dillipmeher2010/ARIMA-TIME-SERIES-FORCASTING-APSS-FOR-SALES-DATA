@@ -3,9 +3,30 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from statsmodels.tsa.arima.model import ARIMA
 
+# Create a sample DataFrame for the Excel file
+sample_data = {
+    'Month': ['2024-01', '2024-02', '2024-03', '2024-04', '2024-05', 
+              '2024-06', '2024-07', '2024-08'],
+    'Sales Amt': [5319, 9990, 7597, 8485, 5243, 5367, 3168, 5202]
+}
+sample_df = pd.DataFrame(sample_data)
+
+# Save the sample DataFrame to an Excel file
+sample_file_path = 'sample_sales_data.xlsx'
+sample_df.to_excel(sample_file_path, index=False)
+
 # Streamlit app layout
 st.title("Sales Forecasting App with ARIMA")
 st.write("Upload your sales data in the format of the sample file below:")
+
+# Display download link for the sample file
+with open(sample_file_path, "rb") as f:
+    st.download_button(
+        label="Download Sample Sales Data",
+        data=f,
+        file_name=sample_file_path,
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 # File upload section
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
