@@ -20,12 +20,9 @@ if uploaded_file is not None:
     # Check for required columns
     if 'Month' in df.columns and 'Sales Amt' in df.columns:
         # Prepare the data
-        df['Month'] = pd.to_datetime(df['Month'], format='%b-%y', errors='coerce')
+        df['Month'] = pd.to_datetime(df['Month'], format='%Y-%m', errors='coerce')  # Ensure correct format
         df.dropna(subset=['Month', 'Sales Amt'], inplace=True)  # Drop rows with NaT values
         df.set_index('Month', inplace=True)
-
-        # Debugging output
-        st.write("DataFrame after date conversion:", df)
 
         # Check if there are enough rows to fit the model
         if len(df) < 2:
@@ -33,7 +30,7 @@ if uploaded_file is not None:
         else:
             # Fit the ARIMA model
             st.subheader("Training ARIMA Model")
-            order = (1, 1, 1)  # Example order; you can adjust this based on your data
+            order = (1, 1, 1)  # Adjust this based on your data analysis
             with st.spinner("Training..."):
                 try:
                     model = ARIMA(df['Sales Amt'], order=order)
@@ -51,9 +48,6 @@ if uploaded_file is not None:
                 forecast_index = pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=n_periods, freq='M')
                 forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=['Forecast'])
 
-                # Debugging output
-                st.write("Forecast DataFrame:", forecast_df)
-
                 # Display the results
                 st.write("Forecasting Results:")
                 st.write(forecast_df)
@@ -61,8 +55,8 @@ if uploaded_file is not None:
                 # Plot the results
                 st.subheader("Forecast Plot")
                 plt.figure(figsize=(10, 6))
-                plt.plot(df.index, df['Sales Amt'], label='Historical Sales', color='blue')
-                plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='green')
+                plt.plot(df.index, df['Sales Amt'], label='Historical Sales', color='blue', marker='o')
+                plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='green', marker='x')
                 plt.title("Sales Forecast with ARIMA")
                 plt.xlabel("Month")
                 plt.ylabel("Sales Amount")
