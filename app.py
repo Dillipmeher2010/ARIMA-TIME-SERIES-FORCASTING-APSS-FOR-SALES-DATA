@@ -57,9 +57,13 @@ if uploaded_file is not None:
             st.subheader("Training ARIMA Model")
             order = (1, 1, 1)  # Example order (p, d, q); you can adjust this
             with st.spinner("Training..."):
-                model = ARIMA(df['Sales Amt'], order=order)
-                model_fit = model.fit()
-                st.success("Model training complete!")
+                try:
+                    model = ARIMA(df['Sales Amt'], order=order)
+                    model_fit = model.fit()
+                    st.success("Model training complete!")
+                except Exception as e:
+                    st.error(f"Error fitting model: {e}")
+                    st.stop()
 
             # Create a future DataFrame for forecasting
             n_periods = st.slider("Select the number of periods to forecast:", min_value=1, max_value=12, value=3)
