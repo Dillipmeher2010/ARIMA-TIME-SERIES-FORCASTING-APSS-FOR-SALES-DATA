@@ -79,7 +79,7 @@ if uploaded_file is not None:
                 st.subheader("Forecast Plot")
                 plt.figure(figsize=(10, 6))
                 plt.plot(df.index, df['Sales Amt'], label='Historical Sales', color='blue', marker='o')
-                plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='green', marker='o')
+                plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='green', marker='o', linestyle='--')
                 plt.title("Sales Forecast with ARIMA")
                 plt.xlabel("Month")
                 plt.ylabel("Sales Amount")
