@@ -1,7 +1,7 @@
-streamlit
+streamlit==1.39.0
 pandas
-numpy==1.21.6  # Example version
-scipy==1.7.3   # Example version
-pmdarima==1.8.5  # Check for compatibility
+numpy==1.23.5
+scipy==1.9.3
+pmdarima==1.8.5
 matplotlib
 openpyxl
