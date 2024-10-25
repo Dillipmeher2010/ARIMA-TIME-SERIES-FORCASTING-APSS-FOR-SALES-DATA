@@ -1,5 +1,7 @@
 streamlit
 pandas
-pmdarima
+pmdarima==1.8.5  # Check the version that works best for you
 matplotlib
 openpyxl  # Required for reading Excel files
+numpy==1.23.5  # or a compatible version
+scipy==1.10.1  # or a compatible version
