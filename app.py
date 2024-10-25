@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from statsmodels.tsa.arima.model import ARIMA
+from pmdarima import auto_arima
 
 # Function to create sample data
 def create_sample_data():
@@ -13,7 +13,7 @@ def create_sample_data():
     return pd.DataFrame(sample_data)
 
 # Streamlit app
-st.title("Time Series Forecasting with ARIMA")
+st.title("Time Series Forecasting with Auto ARIMA")
 
 # File uploader
 uploaded_file = st.file_uploader("Upload a CSV file", type="csv")
@@ -40,14 +40,13 @@ else:
     # Set 'Month' as the index
     data.set_index('Month', inplace=True)
 
-    # ARIMA model
-    order = (1, 1, 1)  # Adjust the order as necessary
-    model = ARIMA(data['Sales Amt'], order=order)
-    model_fit = model.fit()
+    # Auto ARIMA model
+    with st.spinner("Fitting the Auto ARIMA model..."):
+        model = auto_arima(data['Sales Amt'], seasonal=False, stepwise=True, trace=True)
 
     # Forecasting
     forecast_period = st.slider("Select number of months to forecast:", 1, 12, 3)
-    forecast = model_fit.forecast(steps=forecast_period)
+    forecast, conf_int = model.predict(n_periods=forecast_period, return_conf_int=True)
 
     # Create forecast index
     forecast_index = pd.date_range(data.index[-1] + pd.DateOffset(months=1), 
@@ -60,7 +59,11 @@ else:
     plt.figure(figsize=(10, 5))
     plt.plot(data.index, data['Sales Amt'], label='Historical Sales', marker='o')
     plt.plot(forecast_df.index, forecast_df['Forecasted Sales'], label='Forecasted Sales', marker='o', color='orange')
-    plt.title('Sales Forecasting')
+    plt.fill_between(forecast_df.index, 
+                     conf_int[:, 0], 
+                     conf_int[:, 1], 
+                     color='orange', alpha=0.2, label='Confidence Interval')
+    plt.title('Sales Forecasting with Auto ARIMA')
     plt.xlabel('Month')
     plt.ylabel('Sales Amount')
     plt.legend()
@@ -70,3 +73,12 @@ else:
     # Display forecast values
     st.write("Forecasted Sales Values:")
     st.dataframe(forecast_df)
+
+    # Option to download the forecasted data
+    csv = forecast_df.to_csv().encode('utf-8')
+    st.download_button(
+        label="Download Forecasted Sales Data",
+        data=csv,
+        file_name='forecasted_sales.csv',
+        mime='text/csv',
+    )
