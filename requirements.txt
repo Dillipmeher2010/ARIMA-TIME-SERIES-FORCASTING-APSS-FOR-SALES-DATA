@@ -1,7 +1,7 @@
 streamlit
 pandas
-numpy==1.24.3  # Choose a compatible version
-scipy==1.10.1  # Choose a compatible version
-pmdarima==1.8.5  # Ensure this version is compatible with your NumPy version
+numpy==1.21.6  # Example version
+scipy==1.7.3   # Example version
+pmdarima==1.8.5  # Check for compatibility
 matplotlib
-openpyxl  # Required for reading Excel files
+openpyxl
