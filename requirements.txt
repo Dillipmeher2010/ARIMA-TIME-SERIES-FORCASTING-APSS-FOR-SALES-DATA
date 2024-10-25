@@ -1,7 +1,6 @@
 streamlit==1.39.0
-pandas
-numpy==1.23.5
-scipy==1.9.3
-pmdarima==1.8.5
-matplotlib
-openpyxl
+pandas==1.5.3
+matplotlib==3.7.1
+statsmodels==0.14.0
+openpyxl==3.0.10  # Required for reading Excel files
+numpy==1.23.5     # Adjust version if necessary based on your environment
