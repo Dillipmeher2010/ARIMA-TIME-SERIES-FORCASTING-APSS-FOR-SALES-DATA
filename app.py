@@ -64,4 +64,4 @@ if uploaded_file:
         st.error("The uploaded file does not contain the required 'Month' and 'Sales Amt' columns.")
 
 # Footer
-st.write("Developed by Kunaal Naik")
+st.write("Developed by Dillip Meher")
