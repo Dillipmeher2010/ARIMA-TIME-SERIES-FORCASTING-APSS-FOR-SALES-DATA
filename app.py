@@ -1,84 +1,101 @@
-import streamlit as st
+# Import necessary libraries
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import streamlit as st
 from pmdarima import auto_arima
+from statsmodels.tsa.stattools import adfuller
+from statsmodels.tsa.arima.model import ARIMA
 
-# Function to create sample data
-def create_sample_data():
-    sample_data = {
-        'Month': ['Jan-24', 'Feb-24', 'Mar-24', 'Apr-24', 'May-24', 
-                  'Jun-24', 'Jul-24', 'Aug-24', 'Sep-24'],
-        'Sales Amt': [9356, 4891, 5824, 8116, 2864, 2326, 2240, 6717, 2864]
-    }
-    return pd.DataFrame(sample_data)
+# Function to test the stationarity of a time series
+def test_stationarity(timeseries):
+    rolmean = timeseries.rolling(24).mean()  # Rolling mean
+    rolstd = timeseries.rolling(24).std()    # Rolling std deviation
+    
+    # Plot rolling statistics
+    plt.figure(figsize=(10, 6))
+    plt.plot(timeseries, color='blue', label='Original')
+    plt.plot(rolmean, color='red', label='Rolling Mean')
+    plt.plot(rolstd, color='black', label='Rolling Std')
+    plt.legend(loc='best')
+    plt.title('Rolling Mean & Standard Deviation')
+    st.pyplot(plt)  # Use Streamlit's pyplot
 
-# Streamlit app
-st.title("Time Series Forecasting with Auto ARIMA")
+    # Perform the Dickey-Fuller test
+    st.write('Results of Dickey-Fuller Test:')
+    dftest = adfuller(timeseries, autolag='AIC')
+    dfoutput = pd.Series(dftest[0:4], index=['Test Statistic', 'p-value', '#Lags Used', 'Number of Observations Used'])
+    for key, value in dftest[4].items():
+        dfoutput['Critical Value (%s)' % key] = value
+    st.write(dfoutput)
 
-# File uploader
-uploaded_file = st.file_uploader("Upload a CSV file", type="csv")
+# Streamlit app layout
+st.title('ARIMA Time Series Forecasting')
 
-# Load sample data if no file is uploaded
-if uploaded_file is None:
-    data = create_sample_data()
-    st.write("Using sample data:")
-else:
-    data = pd.read_csv(uploaded_file)
+# File upload
+uploaded_file = st.file_uploader("Upload your CSV file", type=['csv'])
 
-# Display the uploaded data
-st.write("Data:")
-st.dataframe(data)
+if uploaded_file is not None:
+    # Load the dataset
+    train = pd.read_csv(uploaded_file)
 
-# Ensure the 'Month' column is in the correct format
-data['Month'] = pd.to_datetime(data['Month'], format='%b-%y', errors='coerce')
-data['Sales Amt'] = pd.to_numeric(data['Sales Amt'], errors='coerce')
+    # Display the uploaded data
+    st.write("Data Preview:")
+    st.write(train.head())
 
-# Check for invalid dates
-if data['Month'].isnull().any():
-    st.error("Some 'Month' values are invalid and could not be parsed. Please ensure dates are in 'MMM-YY' format (e.g., Jan-24).")
-else:
-    # Set 'Month' as the index
-    data.set_index('Month', inplace=True)
+    # Assuming 'Count' is the target variable for ARIMA
+    if 'Count' in train.columns:
+        # Log transformation of the 'Count' column
+        train_log = np.log(train['Count'])
 
-    # Auto ARIMA model
-    with st.spinner("Fitting the Auto ARIMA model..."):
-        model = auto_arima(data['Sales Amt'], seasonal=False, stepwise=True, trace=True)
+        # Test for stationarity
+        test_stationarity(train_log)
 
-    # Forecasting
-    forecast_period = st.slider("Select number of months to forecast:", 1, 12, 3)
-    forecast, conf_int = model.predict(n_periods=forecast_period, return_conf_int=True)
+        # Define and fit the ARIMA model using auto_arima
+        model = auto_arima(train_log,
+                           seasonal=False,
+                           m=1,
+                           start_p=0,
+                           start_d=0,
+                           start_q=0,
+                           max_p=3,
+                           max_d=2,
+                           max_q=3,
+                           trace=True,
+                           error_action='ignore',
+                           suppress_warnings=True,
+                           stepwise=True)
 
-    # Create forecast index
-    forecast_index = pd.date_range(data.index[-1] + pd.DateOffset(months=1), 
-                                    periods=forecast_period, freq='MS')
+        # Print the summary of the best ARIMA model
+        st.write("Best ARIMA Model Summary:")
+        st.text(model.summary())
 
-    # Create a DataFrame for the forecast
-    forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=['Forecasted Sales'])
+        # Generate forecasts
+        forecast_steps = 30  # Forecasting 30 steps ahead
+        model_fit = model.fit(train_log)
+        forecast = model_fit.get_forecast(steps=forecast_steps)
+        forecast_index = pd.date_range(start=train.index[-1], periods=forecast_steps + 1, freq='D')[1:]
 
-    # Plotting the results
-    plt.figure(figsize=(10, 5))
-    plt.plot(data.index, data['Sales Amt'], label='Historical Sales', marker='o')
-    plt.plot(forecast_df.index, forecast_df['Forecasted Sales'], label='Forecasted Sales', marker='o', color='orange')
-    plt.fill_between(forecast_df.index, 
-                     conf_int[:, 0], 
-                     conf_int[:, 1], 
-                     color='orange', alpha=0.2, label='Confidence Interval')
-    plt.title('Sales Forecasting with Auto ARIMA')
-    plt.xlabel('Month')
-    plt.ylabel('Sales Amount')
-    plt.legend()
-    plt.grid()
-    st.pyplot(plt)
+        # Get forecast values and confidence intervals
+        forecast_values = forecast.predicted_mean
+        conf_int = forecast.conf_int()
 
-    # Display forecast values
-    st.write("Forecasted Sales Values:")
-    st.dataframe(forecast_df)
+        # Create a DataFrame for the forecast
+        forecast_df = pd.DataFrame({
+            'Forecast': forecast_values,
+            'Lower CI': conf_int.iloc[:, 0],
+            'Upper CI': conf_int.iloc[:, 1]
+        }, index=forecast_index)
 
-    # Option to download the forecasted data
-    csv = forecast_df.to_csv().encode('utf-8')
-    st.download_button(
-        label="Download Forecasted Sales Data",
-        data=csv,
-        file_name='forecasted_sales.csv',
-        mime='text/csv',
-    )
+        # Plot historical data and forecast
+        plt.figure(figsize=(12, 6))
+        plt.plot(train.index, train['Count'], label='Historical Data')
+        plt.plot(forecast_df.index, forecast_df['Forecast'], color='red', label='Forecast')
+        plt.fill_between(forecast_df.index, forecast_df['Lower CI'], forecast_df['Upper CI'], color='pink', alpha=0.3)
+        plt.title('ARIMA Forecast')
+        plt.xlabel('Date')
+        plt.ylabel('Count')
+        plt.legend(loc='best')
+        st.pyplot(plt)  # Use Streamlit's pyplot
+    else:
+        st.error("The uploaded CSV file must contain a 'Count' column.")
