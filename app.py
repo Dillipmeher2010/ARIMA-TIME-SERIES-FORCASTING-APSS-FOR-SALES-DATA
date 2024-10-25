@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from statsmodels.tsa.arima.model import ARIMA
+from pmdarima import auto_arima
 import io
 
-st.title("Time Series Forecasting with ARIMA")
+st.title("Time Series Forecasting with Auto ARIMA")
 
 # Sample data for download
 sample_data = pd.DataFrame({
@@ -61,14 +61,13 @@ if uploaded_file:
         # Forecasting parameters
         forecast_period = st.slider("Select the number of months for forecasting", min_value=1, max_value=24, value=12)
 
-        # Fit ARIMA model
+        # Fit Auto ARIMA model
         try:
-            model = ARIMA(data['Sales Amt'], order=(1, 1, 1))
-            model_fit = model.fit()
-            st.success("ARIMA model successfully fitted.")
+            model = auto_arima(data['Sales Amt'], seasonal=False, trace=True, error_action='ignore', suppress_warnings=True)
+            st.success("Auto ARIMA model successfully fitted with order: {}".format(model.order))
 
             # Forecasting
-            forecast = model_fit.forecast(steps=forecast_period)
+            forecast = model.predict(n_periods=forecast_period)
             forecast_index = pd.date_range(data.index[-1] + pd.DateOffset(months=1), periods=forecast_period, freq='MS')
             forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=['Forecast'])
 
@@ -83,4 +82,4 @@ if uploaded_file:
             st.pyplot(plt)
 
         except Exception as e:
-            st.error(f"An error occurred while fitting the ARIMA model: {e}")
+            st.error(f"An error occurred while fitting the Auto ARIMA model: {e}")
