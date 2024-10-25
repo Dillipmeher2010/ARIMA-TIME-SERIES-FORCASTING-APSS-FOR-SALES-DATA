@@ -14,11 +14,20 @@ if uploaded_file is not None:
     try:
         # Read the uploaded Excel file
         df = pd.read_excel(uploaded_file)
+        
+        # Check for expected columns
+        if 'Count' not in df.columns:
+            st.error("Uploaded file must contain a 'Count' column.")
+        else:
+            # Proceed with your data processing and model fitting...
+            # Example of a simple check
+            st.write("Data loaded successfully:")
+            st.dataframe(df.head())
 
-        # Proceed with your data processing and model fitting...
-        # (Include your model fitting code here)
+            # Your existing ARIMA fitting code goes here
+            # ...
 
     except Exception as e:
-        st.error(f"An error occurred: {e}")
+        st.error(f"An error occurred while processing the file: {e}")
 else:
     st.info("Please upload an Excel file to proceed.")
