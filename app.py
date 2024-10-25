@@ -2,8 +2,27 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from statsmodels.tsa.arima.model import ARIMA
+import io
 
 st.title("Time Series Forecasting with ARIMA")
+
+# Sample data for download
+sample_data = pd.DataFrame({
+    "Month": ["Jan-24", "Feb-24", "Mar-24", "Apr-24", "May-24", "Jun-24", "Jul-24", "Aug-24", "Sep-24"],
+    "Sales Amt": [9356, 4891, 5824, 8116, 2864, 2326, 2240, 6717, 2864]
+})
+
+# Button to download the sample file
+st.sidebar.header("Sample File")
+sample_file = io.BytesIO()
+sample_data.to_csv(sample_file, index=False)
+sample_file.seek(0)
+st.sidebar.download_button(
+    label="Download Sample CSV",
+    data=sample_file,
+    file_name="sample_sales_data.csv",
+    mime="text/csv"
+)
 
 # File uploader for CSV input
 uploaded_file = st.file_uploader("Upload a CSV file with 'Month' and 'Sales Amt' columns", type="csv")
