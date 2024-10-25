@@ -3,4 +3,10 @@ pandas
 pmdarima
 matplotlib
 numpy
+scipystreamlit
+pandas
+pmdarima
+matplotlib
+numpy
 scipy
+
