@@ -1,4 +1,6 @@
 streamlit
 pandas
+pmdarima
 matplotlib
-statsmodels
+numpy
+scipy
