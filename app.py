@@ -1,73 +1,64 @@
+# app.py
+
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from pmdarima import auto_arima
+from statsmodels.tsa.arima.model import ARIMA
+from datetime import datetime
+import io
 
-# Streamlit app layout
-st.title("Sales Forecasting App with Auto ARIMA")
-st.write("Upload your sales data in the format of the sample file below:")
+st.title("ARIMA Time Series Forecasting")
 
-# File upload section
-uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
+# File uploader for sample CSV
+uploaded_file = st.file_uploader("Upload a CSV file with 'Month' and 'Sales Amt' columns", type="csv")
 
-if uploaded_file is not None:
-    # Read the uploaded Excel file
-    df = pd.read_excel(uploaded_file)
+# Forecast period selection slider
+forecast_period = st.slider("Select number of months to forecast", min_value=1, max_value=24, value=6)
 
-    # Display the DataFrame for debugging
-    st.write("Uploaded DataFrame:", df)
+if uploaded_file:
+    # Load data
+    data = pd.read_csv(uploaded_file)
+    
+    # Check if required columns are present
+    if 'Month' in data.columns and 'Sales Amt' in data.columns:
+        # Parse dates and set index
+        data['Month'] = pd.to_datetime(data['Month'], format='%b-%y')
+        data.set_index('Month', inplace=True)
+        
+        st.write("Uploaded Data:")
+        st.write(data)
+        
+        # Plot original data
+        st.subheader("Sales Amount Over Time")
+        plt.figure(figsize=(10, 4))
+        plt.plot(data['Sales Amt'], label='Sales Amt', color='blue')
+        plt.title("Sales Amount Over Time")
+        plt.xlabel("Month")
+        plt.ylabel("Sales Amount")
+        plt.legend()
+        st.pyplot(plt)
 
-    # Check for required columns
-    if 'Month' in df.columns and 'Sales Amt' in df.columns:
-        # Prepare the data
-        df['Month'] = pd.to_datetime(df['Month'], format='%b-%y', errors='coerce')
-        df.set_index('Month', inplace=True)
+        # Train ARIMA model
+        model = ARIMA(data['Sales Amt'], order=(2, 1, 0))
+        model_fit = model.fit()
 
-        # Drop rows with NaT values if date conversion failed
-        df.dropna(inplace=True)
-        st.write("DataFrame after date conversion:", df)
+        # Forecast
+        forecast = model_fit.forecast(steps=forecast_period)
+        forecast_index = pd.date_range(data.index[-1] + pd.DateOffset(months=1), periods=forecast_period, freq='MS')
+        forecast_series = pd.Series(forecast, index=forecast_index)
 
-        # Check if there are enough rows to fit the model
-        if len(df) < 2:
-            st.error("The DataFrame must contain at least 2 valid rows for fitting the model.")
-        else:
-            # Fit the Auto ARIMA model
-            st.subheader("Training Auto ARIMA Model")
-            try:
-                model = auto_arima(df['Sales Amt'], seasonal=False, trace=True, error_action='ignore', suppress_warnings=True)
-                st.success("Model training complete!")
-            except Exception as e:
-                st.error(f"Model fitting failed: {e}")
-                print(f"Error details: {e}")
-
-            # Create a future DataFrame for forecasting
-            n_periods = st.slider("Select the number of periods to forecast:", min_value=1, max_value=12, value=3)
-            try:
-                # Forecast the future sales
-                forecast, conf_int = model.predict(n_periods=n_periods, return_conf_int=True)
-                forecast_index = pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=n_periods, freq='M')
-                forecast_df = pd.DataFrame(forecast, index=forecast_index, columns=['Forecast'])
-
-                # Display the results
-                st.write("Forecasting Results:")
-                st.write(forecast_df)
-
-                # Plot the results
-                st.subheader("Forecast Plot")
-                plt.figure(figsize=(10, 6))
-                plt.plot(df.index, df['Sales Amt'], label='Historical Sales', color='blue', marker='o')
-                plt.plot(forecast_df.index, forecast_df['Forecast'], label='Forecast', color='green', marker='o', linestyle='--')
-                plt.fill_between(forecast_df.index, conf_int[:, 0], conf_int[:, 1], color='lightgreen', alpha=0.3)
-                plt.title("Sales Forecast with Auto ARIMA")
-                plt.xlabel("Month")
-                plt.ylabel("Sales Amount")
-                plt.xticks(rotation=45)
-                plt.axvline(x=df.index[-1], color='red', linestyle='--', label='Forecast Start')  # Line indicating forecast start
-                plt.legend()
-                plt.grid()
-                st.pyplot(plt)
-
-            except Exception as e:
-                st.error(f"An error occurred during forecasting: {e}")
+        # Plot forecast
+        st.subheader("Forecasted Sales Amount")
+        plt.figure(figsize=(10, 4))
+        plt.plot(data['Sales Amt'], label='Sales Amt', color='blue')
+        plt.plot(forecast_series, label='Forecast', color='red', linestyle='--')
+        plt.title("Sales Amount with Forecast")
+        plt.xlabel("Month")
+        plt.ylabel("Sales Amount")
+        plt.legend()
+        st.pyplot(plt)
     else:
-        st.error("Uploaded file must contain 'Month' and 'Sales Amt' columns.")
+        st.error("The uploaded file does not contain the required 'Month' and 'Sales Amt' columns.")
+
+# Footer
+st.write("Developed by Kunaal Naik")
